@@ -74,24 +74,27 @@ open class MKJSONEventLogger {
         }
     }
 
-    public func log(_ level: LogLevel, _ msg: String) async {
-        var exists = ObjCBool(false)
-        FileManager.default.fileExists(atPath: eventLog.directoryURL.path, isDirectory: &exists)
-        guard exists.boolValue else {
-            osLog.log("Logging failed to write event to disk: the directory did not exist. Did you create one? \(self.eventLog.debugDescription)")
-            return
+    public func log(_ level: LogLevel, _ msg: String) {
+        Task {
+            var exists = ObjCBool(false)
+            FileManager.default.fileExists(atPath: eventLog.directoryURL.path, isDirectory: &exists)
+            guard exists.boolValue else {
+                osLog.log("Logging failed to write event to disk: the directory did not exist. Did you create one? \(self.eventLog.debugDescription)")
+                return
+            }
+            osLog.log(level: level.osLogType, "\(msg)")
+            if eventLog.loggedEvents.count > 100 {
+                eventLog.loggedEvents.removeSubrange(0...50)
+            }
+            let event = LoggedEvent(message: msg, timestamp: dateFormatter.string(from: Date()))
+            eventLog.loggedEvents.append(event)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            let data = try? encoder.encode(eventLog)
+            let url = fileURL()
+            try? data?.write(to: url)
         }
-        osLog.log(level: level.osLogType, "\(msg)")
-        if eventLog.loggedEvents.count > 100 {
-            eventLog.loggedEvents.removeSubrange(0...50)
-        }
-        let event = LoggedEvent(message: msg, timestamp: dateFormatter.string(from: Date()))
-        eventLog.loggedEvents.append(event)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        let data = try? encoder.encode(eventLog)
-        let url = fileURL()
-        try? data?.write(to: url)
+
     }
     
     private func fileURL() -> URL {
