@@ -1,8 +1,13 @@
 import Foundation
 import os
 
-
 open class MKJSONEventLogger {
+    
+    private static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        return encoder
+    }()
         
     public struct EventLog: Codable, CustomDebugStringConvertible {
         public let identifier: LogIdentifier
@@ -88,9 +93,7 @@ open class MKJSONEventLogger {
             }
             let event = LoggedEvent(message: msg, timestamp: dateFormatter.string(from: Date()))
             eventLog.loggedEvents.append(event)
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try? encoder.encode(eventLog)
+            let data = try? Self.encoder.encode(eventLog)
             let url = fileURL()
             try? data?.write(to: url)
         }
